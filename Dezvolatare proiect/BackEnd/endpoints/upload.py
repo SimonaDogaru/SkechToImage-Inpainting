@@ -13,7 +13,7 @@ router = APIRouter()
 # Ensure directories exist
 UPLOAD_DIR = Path("uploads")
 OUTPUT_DIR = Path("outputs")
-COLAB_URL = "https://cfaa-34-124-184-64.ngrok-free.app/generate"
+COLAB_URL = "https://b529-34-59-156-52.ngrok-free.app/generate"
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -68,16 +68,19 @@ async def upload_files(
             raise HTTPException(status_code=500, detail="Failed to generate patch with Colab")
 
         # Automatically combine images after successful patch generation
-        final_result = auto_combine_after_upload()
-        if final_result is None:
+        result = auto_combine_after_upload()
+        if result is None:
             raise HTTPException(status_code=500, detail="Failed to combine images")
+        
+        final_result_path, inpainting_mask_path = result
 
         return JSONResponse(
             content={
                 "message": "Files uploaded, patch generated and images combined successfully",
                 "uploaded_files": [str(path) for path in file_paths.values()],
                 "generated_patch": str(output_path),
-                "final_result": str(final_result)
+                "final_result": str(final_result_path),
+                "inpainting_mask": str(inpainting_mask_path)
             },
             status_code=200
         )
@@ -90,7 +93,6 @@ async def upload_files(
                     path.unlink()
             except:
                 pass
-        #raise HTTPException(status_code=500, detail=str(e))
         print("[❌ EXCEPTION]", traceback.format_exc())
         raise HTTPException(status_code=500, detail="Internal Server Error – see terminal logs")
 
