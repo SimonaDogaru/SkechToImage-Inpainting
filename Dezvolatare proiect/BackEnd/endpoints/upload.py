@@ -13,7 +13,7 @@ router = APIRouter()
 # Ensure directories exist
 UPLOAD_DIR = Path("uploads")
 OUTPUT_DIR = Path("outputs")
-COLAB_URL = "https://b529-34-59-156-52.ngrok-free.app/generate"
+COLAB_URL = "https://ed4d-34-126-86-58.ngrok-free.app/generate"
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)

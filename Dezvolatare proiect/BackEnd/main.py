@@ -23,11 +23,12 @@ app.add_middleware(
 )
 
 # Import routers
-from endpoints import image_processing, upload
+from endpoints import upload, inpaint, image_processing
 
 # Include routers
-app.include_router(image_processing.router, prefix="/api/v1", tags=["image-processing"])
+#app.include_router(image_processing.router, prefix="/api/v1", tags=["image-processing"])
 app.include_router(upload.router, prefix="/api/v1", tags=["upload"])
+app.include_router(inpaint.router, prefix="/api/v1", tags=["inpaint"])
 
 @app.get("/")
 async def root():

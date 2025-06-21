@@ -7,7 +7,7 @@ import numpy as np
 import requests
 from typing import Optional
 import uuid
-
+"""
 from utils.image_utils import (
     calculate_mask_bbox,
     crop_and_resize,
@@ -114,3 +114,4 @@ async def process_image(
         if 'files' in locals():
             for file in files.values():
                 file[1].close() 
+"""
