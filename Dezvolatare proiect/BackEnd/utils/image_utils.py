@@ -89,3 +89,24 @@ def call_colab_generate(colab_url: str, sketch_path: str, output_path: str) -> b
     except Exception as e:
         print("[EXCEPTION]", str(e))
         return False
+
+def call_colab_inpaint(colab_url, image_path, mask_path, output_path):
+    try:
+        with open(image_path, "rb") as image_file, open(mask_path, "rb") as mask_file:
+            files = {
+                "image": image_file,
+                "mask": mask_file
+            }
+            response = requests.post(f"{colab_url}/inpaint", files=files)
+        
+        if response.status_code == 200:
+            with open(output_path, "wb") as f:
+                f.write(response.content)
+            print("[✅ INPAINTING OK]")
+            return True
+        else:
+            print(f"[❌ INPAINTING FAIL] {response.status_code} {response.text}")
+            return False
+    except Exception as e:
+        print(f"[❌ INPAINT EXCEPTION] {e}")
+        return False
