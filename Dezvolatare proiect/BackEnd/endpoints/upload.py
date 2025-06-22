@@ -4,8 +4,6 @@ import os
 from typing import List
 import shutil
 from pathlib import Path
-from utils.image_utils import call_colab_generate
-from utils.combineImages_utils import auto_combine_after_upload
 import traceback
 
 router = APIRouter()
@@ -13,7 +11,6 @@ router = APIRouter()
 # Ensure directories exist
 UPLOAD_DIR = Path("uploads")
 OUTPUT_DIR = Path("outputs")
-COLAB_URL = "https://ed4d-34-126-86-58.ngrok-free.app/generate"
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -56,31 +53,10 @@ async def upload_files(
             with open(path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
-        # Call Colab to generate patch
-        output_path = OUTPUT_DIR / "gen_patch.png"
-        success = call_colab_generate(
-            colab_url=COLAB_URL,
-            sketch_path=file_paths["sketch"],
-            output_path=output_path
-        )
-
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to generate patch with Colab")
-
-        # Automatically combine images after successful patch generation
-        result = auto_combine_after_upload()
-        if result is None:
-            raise HTTPException(status_code=500, detail="Failed to combine images")
-        
-        final_result_path, inpainting_mask_path = result
-
         return JSONResponse(
             content={
-                "message": "Files uploaded, patch generated and images combined successfully",
-                "uploaded_files": [str(path) for path in file_paths.values()],
-                "generated_patch": str(output_path),
-                "final_result": str(final_result_path),
-                "inpainting_mask": str(inpainting_mask_path)
+                "message": "Files uploaded successfully",
+                "uploaded_files": [str(path) for path in file_paths.values()]
             },
             status_code=200
         )

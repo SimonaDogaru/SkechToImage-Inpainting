@@ -3,139 +3,147 @@ import numpy as np
 import os
 import time
 
-def wait_for_gen_patch(timeout=300):  # 5 minutes timeout
-    """
-    Waits for gen_patch.png to be available in the outputs directory
-    """
+def wait_for_gen_patch(timeout=300):
     start_time = time.time()
     while time.time() - start_time < timeout:
         if os.path.exists('outputs/gen_patch.png'):
             return True
-        time.sleep(1)  # Check every second
+        time.sleep(1)
     return False
 
-def generate_inpainting_mask(mask, gen_patch, xmin, xmax, ymin, ymax, output_path='outputs/new_mask_for_inpainting.png'):
+def generate_inpainting_mask(final_image, output_path='outputs/new_mask_for_inpainting.png'):
     """
-    Creează o mască nouă pentru inpainting: marchează tot ce este vizibil din patch dar nu era în masca originală.
+    Creates a mask from the final image. Pixels that are pure white 
+    (255, 255, 255) will be white in the mask. All other pixels will be black.
     """
-    # Verificare dimensiuni bounding box
-    if xmax <= xmin or ymax <= ymin:
-        raise ValueError(f"Invalid bounding box dimensions: xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}")
-
-    # Dimensiuni patch
-    patch_width = xmax - xmin
-    patch_height = ymax - ymin
-
-    print(f"[DEBUG] patch bbox: xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}")
-    print(f"[DEBUG] patch size: width={patch_width}, height={patch_height}")
-
-    if patch_width <= 0 or patch_height <= 0:
-        raise ValueError("Invalid bounding box dimensions")
-
-    # Redimensionează patch-ul generat și masca
-    resized_patch = cv2.resize(gen_patch, (patch_width, patch_height), interpolation=cv2.INTER_LINEAR)
-    resized_mask = cv2.resize(mask, (patch_width, patch_height), interpolation=cv2.INTER_NEAREST)
-
-    # Convertim patch-ul la grayscale pentru a extrage zonele vizibile
-    patch_gray = cv2.cvtColor(resized_patch, cv2.COLOR_BGR2GRAY)
-
-    # Determină zonele din patch care nu sunt acoperite de mască și conțin conținut (valori > 15)
-    difference_area = ((resized_mask == 0) & (patch_gray > 15)).astype(np.uint8) * 255
-
-    # Verificare dimensiuni difference_area
-    if difference_area.shape[0] != (ymax - ymin) or difference_area.shape[1] != (xmax - xmin):
-        print(f"[ERROR] Shape mismatch: diff_area={difference_area.shape}, target={(ymax - ymin, xmax - xmin)}")
-        return None
-
-    # Construim noua mască la dimensiunea inițială
-    new_mask = np.zeros_like(mask, dtype=np.uint8)
-    new_mask[ymin:ymax, xmin:xmax] = difference_area
-
-    # Salvăm masca nouă
-    cv2.imwrite(output_path, new_mask)
-
+    # Create a binary mask where white pixels from the source are white, and all others are black.
+    white_pixels_mask = cv2.inRange(final_image, (255, 255, 255), (255, 255, 255))
+    
+    cv2.imwrite(output_path, white_pixels_mask)
     return output_path
 
+def adjust_colors_and_lighting(original_region, generated_region, mask_region):
+    """
+    Ajustează culorile și iluminarea pentru tranziții mai naturale.
+    """
+    # Convertește la float pentru calcule precise
+    original_float = original_region.astype(np.float32) / 255.0
+    generated_float = generated_region.astype(np.float32) / 255.0
+    
+    # Calculează statistici pentru fiecare canal
+    mask_bool = mask_region > 0
+    
+    if np.any(mask_bool):
+        # Calculează media și deviația standard pentru zona originală
+        original_mean = np.mean(original_float[mask_bool], axis=0)
+        original_std = np.std(original_float[mask_bool], axis=0)
+        
+        # Calculează media și deviația standard pentru zona generată
+        generated_mean = np.mean(generated_float[mask_bool], axis=0)
+        generated_std = np.std(generated_float[mask_bool], axis=0)
+        
+        # Aplică histogram matching pentru fiecare canal
+        adjusted_generated = np.zeros_like(generated_float)
+        
+        for channel in range(3):
+            if original_std[channel] > 0 and generated_std[channel] > 0:
+                # Normalizează și rescalează
+                normalized = (generated_float[:, :, channel] - generated_mean[channel]) / generated_std[channel]
+                adjusted_generated[:, :, channel] = normalized * original_std[channel] + original_mean[channel]
+            else:
+                adjusted_generated[:, :, channel] = generated_float[:, :, channel]
+        
+        # Aplică ajustarea doar în zona măștii
+        result = original_float.copy()
+        result[mask_bool] = adjusted_generated[mask_bool]
+        
+        # Convertește înapoi la uint8
+        return (result * 255).astype(np.uint8)
+    
+    return original_region
+
 def combine_images():
-    """
-    Combines the original image with the generated patch using the mask.
-    The function assumes that gen_patch.png is already generated and available in the output directory.
-    """
-    # Wait for gen_patch.png to be available
     if not wait_for_gen_patch():
         raise TimeoutError("Timeout waiting for gen_patch.png to be generated")
 
-    # Read the input images
     original = cv2.imread('uploads/original.jpg')
     mask = cv2.imread('uploads/mask.png', cv2.IMREAD_GRAYSCALE)
     gen_patch = cv2.imread('outputs/gen_patch.png')
-    
+
     if original is None or mask is None or gen_patch is None:
         raise FileNotFoundError("One or more input images could not be loaded")
-    
-    # Resize mask to match original image dimensions
-    mask = cv2.resize(mask, (original.shape[1], original.shape[0]), interpolation=cv2.INTER_NEAREST)
-    
-    # Debug prints for image shapes
+
+    # Resize both original and mask to 512x512
+    original = cv2.resize(original, (512, 512))
+    mask = cv2.resize(mask, (512, 512), interpolation=cv2.INTER_NEAREST)
+
     print(f"[DEBUG] original shape: {original.shape}")
     print(f"[DEBUG] mask shape: {mask.shape}")
     print(f"[DEBUG] gen_patch shape: {gen_patch.shape}")
-    
-    # Find the bounding box of the white area in the mask
+
+    # Găsește bounding box pentru optimizare
     white_pixels = np.where(mask == 255)
     if len(white_pixels[0]) == 0:
-        raise ValueError("No white pixels found in the mask (255 values). Cannot compute bounding box.")
-    
-    # Dimensiuni mască și imagine originală
-    mask_h, mask_w = mask.shape
-    orig_h, orig_w = original.shape[:2]
+        raise ValueError("No white pixels found in the mask")
 
-    # Bounding box în coordonate de pe mască
-    ymin_m, ymax_m = np.min(white_pixels[0]), np.max(white_pixels[0])
-    xmin_m, xmax_m = np.min(white_pixels[1]), np.max(white_pixels[1])
+    ymin, ymax = np.min(white_pixels[0]), np.max(white_pixels[0])
+    xmin, xmax = np.min(white_pixels[1]), np.max(white_pixels[1])
 
-    # Scaling bounding box la dimensiunea imaginii originale
-    xmin = int(xmin_m * orig_w / mask_w)
-    xmax = int(xmax_m * orig_w / mask_w)
-    ymin = int(ymin_m * orig_h / mask_h)
-    ymax = int(ymax_m * orig_h / mask_h)
-    
-    # Debug print for bounding box
     print(f"[DEBUG] bbox: xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}")
-    print(f"[DEBUG] patch size: width={xmax - xmin}, height={ymax - ymin}")
-    
-    # Validate bounding box
-    if xmax <= xmin or ymax <= ymin:
-        raise ValueError(f"Invalid bounding box: xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}")
-    
-    # Calculate the dimensions of the patch after scaling
-    patch_height = ymax - ymin
+
     patch_width = xmax - xmin
-    
-    # Resize the generated patch to match the mask area
+    patch_height = ymax - ymin
+
+    # Redimensionează patch-ul generat la dimensiunea bounding box-ului
     resized_patch = cv2.resize(gen_patch, (patch_width, patch_height))
     
-    # Create a copy of the original image
+    # Creează o mască pentru zona de îmbinare (doar zona alba din masca originală)
+    blend_mask = mask[ymin:ymax, xmin:xmax]
+    
+    # Creează o mască cu gradient pentru tranziții mai naturale
+    # Aplică blur pentru a crea tranziții smooth
+    smooth_mask = cv2.GaussianBlur(blend_mask, (15, 15), 0)
+    
+    # Normalizează masca la 0-1 pentru blending
+    blend_mask_normalized = smooth_mask.astype(np.float32) / 255.0
+    
+    # Extinde masca la 3 canale pentru blending
+    blend_mask_3ch = np.stack([blend_mask_normalized] * 3, axis=2)
+    
+    # Creează o copie a imaginii originale
     result = original.copy()
     
-    # Replace the area in the original image with the resized patch
-    result[ymin:ymax, xmin:xmax] = resized_patch
+    # Extrage zona din imaginea originală
+    original_region = original[ymin:ymax, xmin:xmax]
     
-    # Create outputs directory if it doesn't exist
+    # Aplică blending cu tranziții naturale
+    # Folosește o combinație de blending liniar și seamless cloning
+    blended_region = (resized_patch * blend_mask_3ch + 
+                     original_region * (1 - blend_mask_3ch)).astype(np.uint8)
+    
+    # Aplică un blur suplimentar la margini pentru tranziții mai smooth
+    # Creează o mască pentru margini
+    edge_mask = cv2.Canny(blend_mask, 50, 150)
+    edge_mask = cv2.dilate(edge_mask, np.ones((3, 3), np.uint8), iterations=2)
+    
+    # Aplică blur doar la margini
+    if np.any(edge_mask > 0):
+        edge_blur = cv2.GaussianBlur(blended_region, (5, 5), 0)
+        edge_mask_3ch = np.stack([edge_mask.astype(np.float32) / 255.0] * 3, axis=2)
+        blended_region = (edge_blur * edge_mask_3ch + 
+                         blended_region * (1 - edge_mask_3ch)).astype(np.uint8)
+    
+    # Înlocuiește zona în rezultat
+    result[ymin:ymax, xmin:xmax] = blended_region
+
     os.makedirs('outputs', exist_ok=True)
-    
-    # Save the final result
     cv2.imwrite('outputs/final_result.png', result)
-    
-    # Generate and save the inpainting mask using the original gen_patch
-    inpainting_mask_path = generate_inpainting_mask(mask, gen_patch, xmin, xmax, ymin, ymax)
-    
+
+    inpainting_mask_path = generate_inpainting_mask(result)
+
     return 'outputs/final_result.png', inpainting_mask_path
 
 def auto_combine_after_upload():
-    """
-    Automatically runs the combine_images function after upload
-    """
     try:
         return combine_images()
     except Exception as e:
