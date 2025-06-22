@@ -4,6 +4,7 @@ import os
 import shutil
 from pathlib import Path
 import uvicorn
+import numpy as np
 
 # Create necessary directories
 UPLOAD_DIR = Path("uploads")

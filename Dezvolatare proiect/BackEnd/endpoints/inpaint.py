@@ -5,8 +5,8 @@ from utils.combineImages_utils import auto_combine_after_upload
 
 router = APIRouter()
 
-COLAB_GENERATE_URL = "https://3398-34-9-58-8.ngrok-free.app/generate"
-COLAB_INPAINT_URL = "https://3398-34-9-58-8.ngrok-free.app"
+COLAB_GENERATE_URL = "https://14cc-34-87-187-95.ngrok-free.app/generate"
+COLAB_INPAINT_URL = "https://14cc-34-87-187-95.ngrok-free.app"
 
 @router.post("/inpaint")
 async def inpaint_after_upload():
@@ -38,7 +38,7 @@ async def inpaint_after_upload():
         
         # Step 3: Perform inpainting
         print("[🔄 PERFORMING INPAINTING]")
-        image_path = Path("outputs/final_result.png")
+        image_path = Path("outputs/final_result_corrected.png")
         mask_path = Path("outputs/new_mask_for_inpainting.png")
         output_path = Path("outputs/inpainted_result.jpg")
 
