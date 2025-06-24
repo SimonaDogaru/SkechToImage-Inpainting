@@ -274,7 +274,7 @@ const App = () => {
             disabled={!previewUrl}
           >
             <span className="text-white">Download</span>
-          </button>
+        </button>
         </div>
       </div>
     </div>
