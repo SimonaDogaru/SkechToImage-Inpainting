@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import os
 import shutil
 from pathlib import Path
@@ -13,6 +14,9 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Image Editing API")
+
+# Mount the outputs directory as static
+app.mount("/output", StaticFiles(directory="outputs"), name="output")
 
 # Configure CORS
 app.add_middleware(
