@@ -8,9 +8,9 @@ from utils.combineImages_utils import auto_combine_after_upload, color_transfer,
 
 router = APIRouter()
 
-COLAB_GENERATE_URL = "https://484e-35-232-73-34.ngrok-free.app/generate"
-COLAB_INPAINT_URL = "https://484e-35-232-73-34.ngrok-free.app" 
-REMOVE_BG_API_KEY = "EZCUAozb27KF7FEi4gTvGB6F"
+COLAB_GENERATE_URL = "https://7060-35-232-5-30.ngrok-free.app/generate"
+COLAB_INPAINT_URL = "https://7060-35-232-5-30.ngrok-free.app"
+REMOVE_BG_API_KEY = "zoYsY5KR4kcySV6KPQZbKC1Q"
 
 def remove_background_with_removebg(image_path, output_path):
     """

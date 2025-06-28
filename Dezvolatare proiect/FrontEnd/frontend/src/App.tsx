@@ -163,7 +163,7 @@ const App = () => {
     <div className="min-h-screen bg-white flex flex-col items-center py-8">
       <div className="flex items-center gap-2 mb-8">
         <span className="bg-green-500 text-white rounded-lg p-2 text-2xl">✅</span>
-        <h1 className="text-4xl font-bold">Smart Image Editor</h1>
+        <h1 className="text-4xl font-bold">Sketch guided inpainting</h1>
       </div>
       
       {/* Main content area - centered */}
