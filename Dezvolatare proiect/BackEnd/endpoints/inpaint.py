@@ -8,8 +8,8 @@ from utils.combineImages_utils import auto_combine_after_upload, color_transfer,
 
 router = APIRouter()
 
-COLAB_GENERATE_URL = "https://7060-35-232-5-30.ngrok-free.app/generate"
-COLAB_INPAINT_URL = "https://7060-35-232-5-30.ngrok-free.app"
+COLAB_GENERATE_URL = "https://93ca-34-133-9-222.ngrok-free.app/generate"
+COLAB_INPAINT_URL = "https://93ca-34-133-9-222.ngrok-free.app"
 REMOVE_BG_API_KEY = "zoYsY5KR4kcySV6KPQZbKC1Q"
 
 def remove_background_with_removebg(image_path, output_path):
@@ -109,11 +109,11 @@ async def inpaint_after_upload():
         else:
             print("[✅ BACKGROUND REMOVED SUCCESSFULLY]")
 
-        # Step 3.1: Adaugă contur verde neon pe patch-ul fără background (obligatoriu înainte de fundal alb)
+        # Step 3.1: add neon green contour to the patch without background
         print("[🔄 ADDING NEON GREEN CONTOUR TO PATCH]")
         add_neon_green_contour(patch_path=str(gen_patch_nobg_path), contour_thickness=6)
 
-        # Step 3.2: Place patch on white background (folosește patch-ul cu contur deja adăugat)
+        # Step 3.2: Place patch on white background using the patch with neon green contour
         print("[🔄 PLACING PATCH ON WHITE BACKGROUND]")
         gen_patch_nobg_onwhite_path = 'outputs/gen_patch_NObg_onWhite.png'
         place_patch_on_white_background(patch_path=str(gen_patch_nobg_path), output_path=gen_patch_nobg_onwhite_path)
@@ -125,7 +125,7 @@ async def inpaint_after_upload():
             raise HTTPException(status_code=500, detail="Failed to combine images")
         final_result_path, _ = result
 
-        # Step 4.1: Creează automat noua mască pentru inpainting
+        # Step 4.1: Generate custom inpainting mask
         print("[🔄 GENERATING CUSTOM INPAINTING MASK]")
         create_custom_inpainting_mask(
             result_path='outputs/final_result_adjusted.png',
@@ -135,7 +135,7 @@ async def inpaint_after_upload():
         )
         inpainting_mask_path = 'outputs/new_mask_for_inpainting.png'
 
-        # Înlocuiește pixelii verde-neon cu cei din original
+        # Step 4.2: Replace green-neon pixels with original pixels
         print("[🔄 REPLACING GREEN-NEON PIXELS WITH ORIGINAL]")
         replace_green_neon_with_original(
             result_path='outputs/final_result_adjusted.png',
@@ -144,7 +144,7 @@ async def inpaint_after_upload():
             tolerance=100
         )
 
-        # Step 5: Perform inpainting
+        # Step 5: Perform inpainting using the custom inpainting mask
         print("[🔄 PERFORMING INPAINTING]")
         image_path = Path("outputs/final_result_adjusted.png")
         mask_path = Path(inpainting_mask_path)
