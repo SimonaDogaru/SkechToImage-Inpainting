@@ -22,9 +22,10 @@ Watch the project demo here:
 ---
 
 ## 🛠️ Technologies Used
+- Huggin
 - Stable Diffusion, ControlNet, LaMA (inpainting with Fourier convolution)  
 - LoRA (Low-Rank Adaptation) for fine-tuning  
 - remove.bg API integration  
-- pyngrok to use a ngrok Tunnel as a free temporary hosting
+- pyngrok - in order to use a ngrok Tunnel as a free temporary hosting
 
 ---
